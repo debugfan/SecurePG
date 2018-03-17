@@ -36,17 +36,17 @@
 			<Add option="-lssl" />
 			<Add option="-lcrypto" />
 		</Linker>
-		<Unit filename="crypt_utils.c">
+		<Unit filename="common/crypt_utils.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="crypt_utils.h" />
+		<Unit filename="common/crypt_utils.h" />
+		<Unit filename="common/string_utils.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/string_utils.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="string_utils.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="string_utils.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />
