@@ -54,3 +54,4 @@ bin
 *.layout
 *.depend
 test.txt
+*.cscope_file_list

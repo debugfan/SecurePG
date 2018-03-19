@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-char *trim_right(char *s, const char *delims)
+char *rtrim(char *s, const char *delims)
 {
     int off, len;
     len = strlen(s);
@@ -21,4 +21,16 @@ char *trim_right(char *s, const char *delims)
         }
     }
     return s;
+}
+
+char *skip(const char *s, const char *delims)
+{
+    for(; *s != '\0'; s++)
+    {
+        if(NULL == strchr(delims, *s))
+        {
+            break;
+        }
+    }
+    return (char *)s;
 }

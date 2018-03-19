@@ -17,9 +17,9 @@ output=$input.spg
 
 pre_key=`openssl rand -hex 32`
 
-read -p "Input comment: " comment
+read -p "Input label: " label
 
-IFS=' ' read -ra ADDR <<< `echo -n $comment | openssl dgst -sha256 -hex -hmac $pre_key`
+IFS=' ' read -ra ADDR <<< `echo -n $label | openssl dgst -sha256 -hex -hmac $pre_key`
 for i in "${ADDR[@]}"; do
     if [ ${#i} -eq 64 ]; then
         dek=$i
@@ -28,8 +28,8 @@ done
 
 enc_key=`echo -n $pre_key | openssl rsautl -encrypt -pubin -inkey $pubkey | openssl base64 -e -A`
 
-echo "Key: $enc_key" > $output
-echo "Comment: $comment" >> $output
+echo "key: $enc_key" > $output
+echo "label: $label" >> $output
 echo "" >> $output
 
 openssl enc -aes256 -K $dek -iv 00 -in $input -a >> $output

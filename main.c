@@ -2,10 +2,17 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
-#include "crypt_utils.h"
+#include <winsock2.h>
+#include <windows.h>
+
+#include "common/crypt_utils.h"
+#include "common/string_utils.h"
+#include "common/spg.h"
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 
 #define PACKAGE_NAME    "SecurePG"
-#define PROGRAM_NAME    "SecurePG"
+#define PROGRAM_NAME    "spg"
 #define PACKAGE_VERSION "1.0"
 
 #define DECRYPT_MODE    0
@@ -15,8 +22,11 @@ typedef struct _options_t {
     int mode;
     const char *input_file;
     const char *key_file;
+    const char *cert_file;
     const char *output_file;
-    const char *comment;
+    const char *label;
+    const char *agent_addr;
+    int agent_port;
 } options_t;
 
 void print_version(const char *program_name)
@@ -30,11 +40,17 @@ void print_version(const char *program_name)
 void print_help(const char *program_name)
 {
     print_version(program_name);
-    fprintf(stdout, " -e, --encrypt     encrypt file\n");
-    fprintf(stdout, " -d, --decrypt     decrypt file\n");
-    fprintf(stdout, " -c, --comment     comment used in encryption\n");
-    fprintf(stdout, " -v, --version     print version infomation\n");
-    fprintf(stdout, " -h, --help        print this help\n");
+    fprintf(stdout, " -e, --encrypt encrypt file\n");
+    fprintf(stdout, " -d, --decrypt decrypt file\n");
+    fprintf(stdout, " -l, --label   label used in encryption\n");
+    fprintf(stdout, " -i, --input   input file\n");
+    fprintf(stdout, " -o, --output  output file\n");
+    fprintf(stdout, " -c, --cert    public key file\n");
+    fprintf(stdout, " -k, --key     key file\n");
+    fprintf(stdout, " -a, --address agent address used to decrypt key");
+    fprintf(stdout, " -p, --port    agent port used to decrypt key");
+    fprintf(stdout, " -v, --version print version information\n");
+    fprintf(stdout, " -h, --help    print this help\n");
 }
 
 int parse_options(int argc, char **argv, options_t *opts)
@@ -47,10 +63,13 @@ int parse_options(int argc, char **argv, options_t *opts)
         {
             { "encrypt", no_argument, 0, 'e' },
             { "decrypt", no_argument, 0, 'd' },
-            { "comment", required_argument, 0, 'c' },
+            { "label", required_argument, 0, 'l' },
             { "in", required_argument, 0, 'i' },
             { "out", required_argument,   0, 'o' },
-            { "inkey", required_argument, 0, 'k' },
+            { "key", required_argument, 0, 'k' },
+            { "cert", required_argument, 0, 'c' },
+            { "address", required_argument, 0, 'a' },
+            { "port", required_argument, 0, 'p' },
             { "help", no_argument, 0, 'h' },
             { "version", no_argument, 0, 'v' },
             { 0, 0, 0, 0 }
@@ -58,7 +77,7 @@ int parse_options(int argc, char **argv, options_t *opts)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long(argc, argv, "edhvi:o:k:c:",
+        c = getopt_long(argc, argv, "edhvi:o:k:c:l:a:p:",
             long_options, &option_index);
 
         /* Detect the end of the options. */
@@ -72,10 +91,10 @@ int parse_options(int argc, char **argv, options_t *opts)
             /* If this option set a flag, do nothing else now. */
             if (long_options[option_index].flag != 0)
                 break;
-            printf("option %s", long_options[option_index].name);
+            fprintf(stderr, "option %s", long_options[option_index].name);
             if (optarg)
-                printf(" with arg %s", optarg);
-            printf("\n");
+                fprintf(stderr, " with arg %s", optarg);
+            fprintf(stderr, "\n");
             break;
         case 'e':
             opts->mode = ENCRYPT_MODE;
@@ -83,17 +102,26 @@ int parse_options(int argc, char **argv, options_t *opts)
         case 'd':
             opts->mode = DECRYPT_MODE;
             break;
+        case 'l':
+            opts->label = strdup(optarg);
+            break;
         case 'c':
-            opts->comment = optarg;
+            opts->cert_file = strdup(optarg);
             break;
         case 'k':
-            opts->key_file = optarg;
+            opts->key_file = strdup(optarg);
             break;
         case 'i':
-            opts->input_file = optarg;
+            opts->input_file = strdup(optarg);
             break;
         case 'o':
-            opts->output_file = optarg;
+            opts->output_file = strdup(optarg);
+            break;
+        case 'a':
+            opts->agent_addr = strdup(optarg);
+            break;
+        case 'p':
+            opts->agent_port = atoi(optarg);
             break;
         case 'h':
             print_help(PROGRAM_NAME);
@@ -108,7 +136,7 @@ int parse_options(int argc, char **argv, options_t *opts)
             break;
 
         default:
-            printf("Argument %c is not supported.\n", c);
+            fprintf(stderr, "Argument %c is not supported.\n", c);
             abort();
         }
     }
@@ -116,10 +144,10 @@ int parse_options(int argc, char **argv, options_t *opts)
     /* Print any remaining command line arguments (not options). */
     if (optind < argc)
     {
-        printf("non-option ARGV-elements: ");
+        fprintf(stderr, "non-option ARGV-elements: ");
         while (optind < argc)
-            printf("%s ", argv[optind++]);
-        putchar('\n');
+            fprintf(stderr, "%s ", argv[optind++]);
+        fprintf(stderr, "\n");
     }
 
     return 0;
@@ -128,7 +156,10 @@ int parse_options(int argc, char **argv, options_t *opts)
 int main(int argc, char *argv[])
 {
     options_t opts;
-    char output_file[260];
+
+    ERR_load_crypto_strings();
+    SSL_library_init();                      /* initialize library */
+    SSL_load_error_strings();                /* readable error messages */
 
 	memset(&opts, 0, sizeof(opts));
 	parse_options(argc, argv, &opts);
@@ -139,42 +170,45 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if(opts.key_file == NULL)
-    {
-        fprintf(stderr, "No key file");
-        return -1;
-    }
-
 	if(opts.mode == ENCRYPT_MODE)
     {
-        char comment[1024];
+        char label[1024];
 
-        if(opts.comment == NULL)
+        if(opts.cert_file == NULL)
         {
-            fprintf(stdout, "Input Comment: ");
-            gets(comment);
-            opts.comment = comment;
+            fprintf(stderr, "No cert file");
+            return -1;
         }
 
-        if(opts.output_file == NULL)
+        if(opts.label == NULL)
         {
-            strcpy(output_file, opts.input_file);
-            strcat(output_file, ".spg");
-            opts.output_file = output_file;
+            fprintf(stdout, "Input label: ");
+            fgets(label, sizeof(label), stdin);
+            rtrim(label, "\r\n");
+            opts.label = label;
         }
 
-        encrypt_file(opts.input_file, opts.key_file, opts.comment, opts.output_file);
+        encrypt_file(opts.input_file, opts.cert_file, opts.label, opts.output_file);
     }
     else
     {
-        if(opts.output_file == NULL)
+        WSADATA wsaData;
+        WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+        if(opts.key_file != NULL)
         {
-            strcpy(output_file, opts.input_file);
-            strcat(output_file, ".dec");
-            opts.output_file = output_file;
+            decrypt_file_by_private_key(opts.input_file, opts.key_file, opts.output_file);
+        }
+        else
+        {
+            decrypt_file_by_agent(opts.input_file,
+                         opts.agent_addr != NULL ? opts.agent_addr : "127.0.0.1",
+                         opts.agent_port != 0 ? opts.agent_port : 9600,
+                         opts.cert_file,
+                         opts.output_file);
         }
 
-        decrypt_file(opts.input_file, opts.key_file, opts.output_file);
+        WSACleanup();
     }
 
     return 0;

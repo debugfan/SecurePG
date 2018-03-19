@@ -2,22 +2,22 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="SecurePG" />
+		<Option title="agent" />
 		<Option pch_mode="2" />
 		<Option compiler="msys2_mingw32_gcc" />
 		<Build>
 			<Target title="Debug">
-				<Option output="bin/Debug/SecurePG" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Debug/agent" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="msys2_mingw32_gcc" />
-				<Option parameters="-d -i test.txt.spg -c mario.pub" />
+				<Option parameters="-k mario.key" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
 			</Target>
 			<Target title="Release">
-				<Option output="bin/Release/SecurePG" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Release/agent" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="msys2_mingw32_gcc" />
@@ -37,30 +37,30 @@
 			<Add option="-lssl" />
 			<Add option="-lcrypto" />
 		</Linker>
-		<Unit filename="common/base64.c">
+		<Unit filename="../common/base64.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="common/base64.h" />
-		<Unit filename="common/crypt_utils.c">
+		<Unit filename="../common/base64.h" />
+		<Unit filename="../common/crypt_utils.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="common/crypt_utils.h" />
-		<Unit filename="common/json_utils.c">
+		<Unit filename="../common/crypt_utils.h" />
+		<Unit filename="../common/json_utils.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="common/json_utils.h" />
-		<Unit filename="common/secure_socket.c">
+		<Unit filename="../common/json_utils.h" />
+		<Unit filename="../common/secure_socket.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="common/secure_socket.h" />
-		<Unit filename="common/spg.c">
+		<Unit filename="../common/secure_socket.h" />
+		<Unit filename="../common/spg.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="common/spg.h" />
-		<Unit filename="common/string_utils.c">
+		<Unit filename="../common/spg.h" />
+		<Unit filename="../common/string_utils.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="common/string_utils.h" />
+		<Unit filename="../common/string_utils.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
 		</Unit>
