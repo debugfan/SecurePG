@@ -53,5 +53,6 @@ bin
 *.dec
 *.layout
 *.depend
-test.txt
 *.cscope_file_list
+magent/android/app/src/main/assets/index.android.bundle
+magent/android/app/src/main/assets/index.android.bundle.meta
