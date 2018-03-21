@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 
 import { JSEncrypt } from 'jsencrypt';
+import { NetworkInfo } from 'react-native-network-info';
 var RNFS = require('react-native-fs');
 var CryptoJS = require("crypto-js");
 var jsrsasign = require("jsrsasign");
@@ -47,7 +48,7 @@ type Props = {};
 export default class App extends Component<Props> {
   constructor(props) {
     super(props);
-    this.state = {url: "http://192.168.0.100/example.key", port: "9600", server: null, secret: "", password: "123456", started: false};
+    this.state = {url: "http://192.168.0.100/example.key", ip: "0.0.0.0", port: "9600", server: null, secret: "", password: "123456", started: false};
 
     this.importFile = this.importFile.bind(this);
     this.removeFile = this.removeFile.bind(this);
@@ -97,9 +98,8 @@ export default class App extends Component<Props> {
       });
   }
 
-  start_agent_server(port, secret, password) {
-    var port = parseInt(port);
-    console.log('listen on port: ', port);
+  start_agent_server(ip, port, secret, password) {
+    console.log('listen on ' + ip + ':' + port);
 
     var srv = net.createServer(function(socket) {
       
@@ -125,7 +125,7 @@ export default class App extends Component<Props> {
         var app_json = JSON.parse(app_data);
         Alert.alert(
           'Decrypt Request',
-          'Label: ' + app_json.label,
+          'Client: ' + socket.address().address + '\nLabel: ' + app_json.label,
           [
             {text: 'Accept', onPress: () => {
               console.log('Decrypt request accepted.');
@@ -145,7 +145,7 @@ export default class App extends Component<Props> {
       socket.on('close', function(data) {
          console.log('Connection closed.');
       });
-    }).listen(port);
+    }).listen(port, ip);
 
     this.setState({server: srv});
     this.setState({started: true});
@@ -157,6 +157,7 @@ export default class App extends Component<Props> {
     }
 
     var password = this.state.password;
+    var ip = this.state.ip;
     var port = parseInt(this.state.port);
 
     var path = RNFS.DocumentDirectoryPath + '/secret.key';
@@ -164,7 +165,7 @@ export default class App extends Component<Props> {
 
     RNFS.readFile(path, 'utf8')
       .then((contents) => {
-        this.start_agent_server(port, contents, password);
+        this.start_agent_server(ip, port, contents, password);
       })
       .catch((err) => {
         console.log(err.message, err.code);
@@ -177,6 +178,13 @@ export default class App extends Component<Props> {
     }
     
     this.setState({started: false});
+  }
+
+  componentDidMount() {
+    NetworkInfo.getIPAddress(aip => {
+      console.log('Local IP: ' + aip);
+      this.setState({ip: aip});
+    });  
   }
   
   render() {
@@ -206,6 +214,9 @@ export default class App extends Component<Props> {
             value={this.state.password}
             onChangeText={(text) => this.setState({password: text})}
           />
+        </View>
+        <View style={styles.row}>
+          <Text>IP: {this.state.ip}</Text>
         </View>
         <View style={styles.row}>
           <Text>Port: </Text>
